@@ -1,25 +1,13 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com", // ← 'service' hatao, yeh daalo
-  port: 587, // ← 465 ki jagah 587
-  secure: false, // ← 587 ke liye false hona chahiye
-  auth: {
-    user: process.env.ADMIN_EMAIL,
-    pass: process.env.ADMIN_EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async ({ to, subject, html, attachments }) => {
-  await transporter.sendMail({
-    from: `"Journal Submission" <${process.env.ADMIN_EMAIL}>`,
+  await resend.emails.send({
+    from: "Journal Submission <onboarding@resend.dev>",
     to: to || process.env.ADMIN_EMAIL,
     subject,
     html,
-    attachments,
   });
 };
 
@@ -30,6 +18,5 @@ exports.sendMailToAdmin = async ({ subject, html, attachments }) => {
     to: process.env.ADMIN_EMAIL,
     subject,
     html,
-    attachments,
   });
 };
