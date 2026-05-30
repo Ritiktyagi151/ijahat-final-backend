@@ -1,0 +1,4 @@
+[dotenv@17.3.1] injecting env (8) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+Server running on port 3000
+Admin already exists
+MongoDB Connected
