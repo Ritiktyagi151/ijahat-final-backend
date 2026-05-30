@@ -12,7 +12,9 @@ const allowedOrigins = [
   "http://localhost:5174",
   "http://127.0.0.1:5174",
   "http://localhost:8000", // ← Admin ke liye add karo
-  "http://127.0.0.1:8000", // ← yeh bhi
+  "http://127.0.0.1:8000",
+  "https://ijaht.com",
+  "https://www.ijaht.com", // ← yeh bhi
 ];
 
 const corsOptions = {
