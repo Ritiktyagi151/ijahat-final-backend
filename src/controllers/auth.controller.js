@@ -1,5 +1,4 @@
 const bcrypt = require("bcryptjs");
-const path = require("path");
 const User = require("../models/user.model");
 const { generateToken } = require("../utils/token.utils");
 const { sendEmail } = require("../utils/email.utils");
@@ -84,12 +83,6 @@ exports.forgotPassword = async (req, res) => {
   user.forgotPasswordOTP = otp;
   user.forgotPasswordOTPExpiry = Date.now() + 10 * 60 * 1000; // 10 mins
   await user.save();
-  const logoAttachment = {
-    filename: "logo.png",
-    path: path.join(__dirname, "../../../frontend/src/assets/logo.png"),
-    cid: "ijhat-logo",
-  };
-
   await sendEmail({
     to: email,
     subject: "Password Reset OTP",
@@ -98,7 +91,6 @@ exports.forgotPassword = async (req, res) => {
       recipientLabel: "IJHAT user account",
       expiry: "10 minutes",
     }),
-    attachments: [logoAttachment],
   });
 
   res.json({ message: "OTP sent to email" });

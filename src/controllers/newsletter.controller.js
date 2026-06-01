@@ -1,9 +1,8 @@
-const path = require("path");
 const NewsletterSubscriber = require("../models/newsletter.model");
 const { sendEmail, sendMailToAdmin } = require("../utils/email.utils");
 const {
-  createNewsletterAdminEmail,
-  createNewsletterSubscriberEmail,
+  getAdminNotificationTemplate,
+  getUserThankYouTemplate,
 } = require("../utils/emailTemplates");
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,26 +28,25 @@ exports.subscribeNewsletter = async (req, res) => {
       timeStyle: "short",
       timeZone: "Asia/Kolkata",
     });
-    const logoPath = path.join(__dirname, "../../../frontend/src/assets/logo.png");
-    const logoAttachment = {
-      filename: "logo.png",
-      path: logoPath,
-      cid: "ijhat-logo",
+    const formData = {
+      email,
+      source,
+      subject: "Newsletter Subscription",
+      submissionDate: date,
     };
 
-    await Promise.all([
-      sendEmail({
+    if (process.env.SEND_USER_CONFIRMATION !== "false") {
+      await sendEmail({
         to: email,
-        subject: "Newsletter Subscription Successful",
-        html: createNewsletterSubscriberEmail({ email }),
-        attachments: [logoAttachment],
-      }),
-      sendMailToAdmin({
-        subject: "New Newsletter Subscriber",
-        html: createNewsletterAdminEmail({ email, date, source }),
-        attachments: [logoAttachment],
-      }),
-    ]);
+        subject: "Thank You For Your Submission",
+        html: getUserThankYouTemplate(formData),
+      });
+    }
+
+    await sendMailToAdmin({
+      subject: "New Submission Received",
+      html: getAdminNotificationTemplate(formData),
+    });
 
     res.status(201).json({ message: "Newsletter subscription successful" });
   } catch (error) {

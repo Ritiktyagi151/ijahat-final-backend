@@ -1,13 +1,21 @@
 const { sendEmail, sendMailToAdmin } = require("../utils/email.utils");
 const {
-  createAdminNotificationEmail,
-  createUserThankYouEmail,
+  getAdminNotificationTemplate,
+  getUserThankYouTemplate,
 } = require("../utils/emailTemplates");
-const path = require("path");
 
 exports.submitContact = async (req, res) => {
   try {
-    const { firstName, lastName = "", email, phone = "", subject, message } = req.body;
+    const {
+      firstName,
+      lastName = "",
+      email,
+      phone = "",
+      country = "",
+      institution = "",
+      subject,
+      message,
+    } = req.body;
 
     if (!firstName || !email || !subject || !message) {
       return res.status(400).json({ message: "All required fields must be filled" });
@@ -23,40 +31,31 @@ exports.submitContact = async (req, res) => {
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
       req.socket?.remoteAddress ||
       "";
-    const logoPath = path.join(__dirname, "../../../frontend/src/assets/logo.png");
-    const logoAttachment = {
-      filename: "logo.png",
-      path: logoPath,
-      cid: "ijhat-logo",
+    const formData = {
+      ...req.body,
+      fullName,
+      email,
+      phone,
+      country,
+      institution,
+      subject,
+      message,
+      submissionDate,
+      ipAddress,
     };
 
-    await Promise.all([
-      sendEmail({
+    if (process.env.SEND_USER_CONFIRMATION !== "false") {
+      await sendEmail({
         to: email,
-        subject: "Thank You for Contacting IJHAT",
-        html: createUserThankYouEmail({
-          firstName,
-          fullName,
-          email,
-          subject,
-        }),
-        attachments: [logoAttachment],
-      }),
-      sendMailToAdmin({
-        subject: "New Form Submission Received",
-        html: createAdminNotificationEmail({
-          fullName,
-          email,
-          phone,
-          subject,
-          message,
-          date: submissionDate,
-          ipAddress,
-          viewUrl: process.env.ADMIN_SUBMISSIONS_URL || "http://localhost:5174",
-        }),
-        attachments: [logoAttachment],
-      }),
-    ]);
+        subject: "Thank You For Your Submission",
+        html: getUserThankYouTemplate(formData),
+      });
+    }
+
+    await sendMailToAdmin({
+      subject: "New Submission Received",
+      html: getAdminNotificationTemplate(formData),
+    });
 
     res.status(200).json({ message: "Contact query submitted successfully" });
   } catch (error) {

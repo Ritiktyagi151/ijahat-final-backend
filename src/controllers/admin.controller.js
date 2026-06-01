@@ -2,7 +2,6 @@ const Admin = require("../models/Admin");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const path = require("path");
 const { sendEmail } = require("../utils/email.utils");
 const { createPasswordResetEmail } = require("../utils/emailTemplates");
 
@@ -80,12 +79,6 @@ exports.forgotAdminPassword = async (req, res) => {
     const resetUrl = `${
       process.env.ADMIN_RESET_URL || "http://localhost:5174/reset-password"
     }/${resetToken}`;
-    const logoAttachment = {
-      filename: "logo.png",
-      path: path.join(__dirname, "../../../frontend/src/assets/logo.png"),
-      cid: "ijhat-logo",
-    };
-
     await sendEmail({
       to: admin.email,
       subject: "IJHAT Admin Password Reset",
@@ -94,7 +87,6 @@ exports.forgotAdminPassword = async (req, res) => {
         recipientLabel: "IJHAT admin dashboard account",
         expiry: "15 minutes",
       }),
-      attachments: [logoAttachment],
     });
 
     res.json({
