@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+
 const escapeHtml = (value = "") =>
   String(value)
     .replace(/&/g, "&amp;")
@@ -21,8 +24,28 @@ const journal = {
   secondary: "#0d9ecf",
 };
 
+const localLogoPath = path.resolve(__dirname, "..", "logo.png");
+let cachedLogoDataUri;
+
 const getFrontendUrl = () => (process.env.FRONTEND_URL || "https://ijaht.com/").replace(/\/?$/, "/");
-const getLogoUrl = () => `${getFrontendUrl()}logo.png`;
+const getLocalLogoDataUri = () => {
+  if (cachedLogoDataUri) {
+    return cachedLogoDataUri;
+  }
+
+  try {
+    const logoBuffer = fs.readFileSync(localLogoPath);
+    cachedLogoDataUri = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    return cachedLogoDataUri;
+  } catch (error) {
+    console.warn("Email logo file could not be loaded:", {
+      path: localLogoPath,
+      message: error.message,
+    });
+    return "";
+  }
+};
+const getLogoUrl = () => process.env.EMAIL_LOGO_URL || getLocalLogoDataUri() || `${getFrontendUrl()}logo.png`;
 
 const humanizeLabel = (key = "") =>
   String(key)
@@ -265,8 +288,8 @@ const detailRow = (label, value) => `
   </tr>
 `;
 
-const emailShell = ({ preheader, headerTitle, children, logoCid, websiteUrl = journal.websiteUrl }) => {
-  const logoSrc = logoCid ? `cid:${logoCid}` : getLogoUrl();
+const emailShell = ({ preheader, headerTitle, children, logoCid, logoUrl, websiteUrl = journal.websiteUrl }) => {
+  const logoSrc = logoCid ? `cid:${logoCid}` : logoUrl || getLogoUrl();
 
   return `
 <!doctype html>
@@ -636,9 +659,11 @@ exports.createPasswordResetEmail = ({
   recipientLabel = "IJHAT account",
   expiry = "10 minutes",
   logoCid,
+  logoUrl,
 } = {}) =>
   emailShell({
     logoCid,
+    logoUrl,
     headerTitle: "Password Reset",
     preheader: `Password reset instructions for your ${recipientLabel}.`,
     children: `
@@ -649,7 +674,9 @@ exports.createPasswordResetEmail = ({
           <p style="margin:0 0 16px;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">A password reset was requested for your ${escapeHtml(recipientLabel)}.</p>
           ${
             resetUrl
-              ? `<a href="${resetUrl}" class="mobile-button" style="display:inline-block;background:${journal.primary};border-radius:8px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:13px 20px;text-decoration:none;">Reset Password</a>`
+              ? `<a href="${escapeHtml(resetUrl)}" class="mobile-button" style="display:inline-block;background:${journal.primary};border-radius:8px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:14px 22px;text-decoration:none;">Reset Password</a>
+          <p style="margin:20px 0 8px;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;">If the button does not work, copy and paste this reset link into your browser:</p>
+          <p style="margin:0;word-break:break-all;color:#0056b3;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.65;"><a href="${escapeHtml(resetUrl)}" style="color:#0056b3;text-decoration:underline;">${escapeHtml(resetUrl)}</a></p>`
               : `<div style="display:inline-block;background:#f7fbff;border:1px solid #dfe8f2;border-radius:10px;color:#0f2f55;font-family:Arial,Helvetica,sans-serif;font-size:28px;font-weight:800;letter-spacing:6px;padding:14px 18px;">${escapeHtml(otp)}</div>`
           }
           <p style="margin:20px 0 0;color:#64748b;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;">This reset request expires in ${escapeHtml(expiry)}. If you did not request it, you can safely ignore this email.</p>

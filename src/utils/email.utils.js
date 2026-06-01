@@ -3,11 +3,7 @@ const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const getFromAddress = () => {
-  const emailFrom = process.env.EMAIL_FROM;
-
-  if (!emailFrom) {
-    throw new Error("EMAIL_FROM environment variable is required for sending email.");
-  }
+  const emailFrom = process.env.EMAIL_FROM || "journal@ijaht.com";
 
   return `IJAHT Journal <${emailFrom}>`;
 };
