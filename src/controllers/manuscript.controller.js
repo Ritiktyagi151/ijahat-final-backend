@@ -1,3 +1,4 @@
+const fs = require("fs/promises");
 const Manuscript = require("../models/manuscript.model");
 const { sendEmail, sendMailToAdmin } = require("../utils/email.utils");
 const {
@@ -6,6 +7,32 @@ const {
   getAdminNotificationTemplate,
   getUserThankYouTemplate,
 } = require("../utils/emailTemplates");
+
+const manuscriptMimeTypes = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+const createManuscriptAttachment = async (file) => {
+  if (!file || !manuscriptMimeTypes.has(file.mimetype)) {
+    throw new Error("Invalid manuscript file type. Only PDF, DOC, and DOCX files are allowed.");
+  }
+
+  const fileBuffer = file.buffer || (await fs.readFile(file.path));
+  const filename = file.originalname || file.filename;
+
+  console.log("Admin manuscript attachment:", {
+    filename,
+    sizeBytes: fileBuffer.length,
+    mimetype: file.mimetype,
+  });
+
+  return {
+    filename,
+    content: fileBuffer.toString("base64"),
+  };
+};
 
 exports.submitManuscript = async (req, res) => {
   console.log("Submit Api call");
@@ -34,6 +61,10 @@ exports.submitManuscript = async (req, res) => {
 
     if (!file) {
       return res.status(400).json({ message: "Manuscript file required" });
+    }
+
+    if (!manuscriptMimeTypes.has(file.mimetype)) {
+      return res.status(400).json({ message: "Only PDF, DOC, and DOCX manuscript files are allowed" });
     }
 
     const manuscript = await Manuscript.create({
@@ -74,9 +105,12 @@ exports.submitManuscript = async (req, res) => {
       });
     }
 
+    const manuscriptAttachment = await createManuscriptAttachment(file);
+
     await sendMailToAdmin({
       subject: "New Submission Received",
       html: getAdminNotificationTemplate(formData),
+      attachments: [manuscriptAttachment],
     });
 
     manuscript.emailSent = true;

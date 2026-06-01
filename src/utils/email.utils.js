@@ -37,11 +37,12 @@ const sendEmail = async ({ to, subject, html, attachments }) => {
 };
 
 // Admin ko email
-exports.sendMailToAdmin = async ({ subject, html }) => {
+exports.sendMailToAdmin = async ({ subject, html, attachments }) => {
   return sendEmail({
     to: process.env.ADMIN_EMAIL,
     subject,
     html,
+    attachments,
   });
 };
 
