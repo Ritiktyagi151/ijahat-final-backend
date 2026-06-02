@@ -91,25 +91,14 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    console.log("Forgot password requested:", { email });
-
     const user = await User.findOne({ email });
     if (!user) {
-      console.log("Forgot password user not found:", { email });
-      return res.status(404).json({ message: "User not found" });
+      return res.json({ message: "Password reset link sent to email" });
     }
-
-    console.log("Forgot password user found:", { email, userId: user._id });
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = hashResetToken(resetToken);
     const resetExpiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000);
-
-    console.log("Password reset token generated:", {
-      email,
-      userId: user._id,
-      expiresAt: resetExpiresAt.toISOString(),
-    });
 
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpire = resetExpiresAt;
@@ -117,20 +106,8 @@ exports.forgotPassword = async (req, res) => {
     user.forgotPasswordOTPExpiry = undefined;
     await user.save();
 
-    console.log("Password reset token saved:", {
-      email,
-      userId: user._id,
-      expiresAt: resetExpiresAt.toISOString(),
-    });
-
     const resetUrl = getFrontendResetUrl(resetToken);
-    console.log("Password reset URL generated:", {
-      email,
-      userId: user._id,
-      resetUrl,
-    });
-
-    const emailResponse = await sendEmail({
+    await sendEmail({
       to: email,
       subject: "Reset Your IJHAT Password",
       html: createPasswordResetEmail({
@@ -139,12 +116,6 @@ exports.forgotPassword = async (req, res) => {
         expiry: `${PASSWORD_RESET_EXPIRY_MINUTES} minutes`,
         logoUrl: "https://ijaht.com/logo.png",
       }),
-    });
-
-    console.log("Password reset email sent response:", {
-      email,
-      userId: user._id,
-      response: emailResponse,
     });
 
     res.json({ message: "Password reset link sent to email" });
@@ -157,6 +128,34 @@ exports.forgotPassword = async (req, res) => {
       response: error.response,
     });
     res.status(500).json({ message: "Password reset request failed" });
+  }
+};
+
+exports.validateResetToken = async (req, res) => {
+  try {
+    const token = req.body.token || req.params.token;
+
+    if (!token) {
+      return res.status(400).json({ message: "Reset token is required" });
+    }
+
+    const hashedToken = hashResetToken(token);
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    }).select("_id");
+
+    if (!user) {
+      return res.status(400).json({ message: "Reset link is invalid or expired" });
+    }
+
+    res.json({ message: "Reset token is valid" });
+  } catch (error) {
+    console.error("Validate reset token failed:", {
+      message: error.message,
+      name: error.name,
+    });
+    res.status(500).json({ message: "Reset token validation failed" });
   }
 };
 
@@ -185,6 +184,12 @@ exports.resetPassword = async (req, res) => {
 
     if (!newPassword) {
       return res.status(400).json({ message: "New password is required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters long",
+      });
     }
 
     const hashedToken = hashResetToken(token);
