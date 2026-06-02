@@ -93,7 +93,9 @@ exports.submitManuscript = async (req, res) => {
       address,
       abstract,
       manuscriptFile: file.originalname,
+      submissionId: manuscript._id.toString(),
       submissionDate,
+      currentStatus: "Received",
       ipAddress,
     };
 

@@ -5,6 +5,16 @@ const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../utils/email.utils");
 const { createPasswordResetEmail } = require("../utils/emailTemplates");
 
+const ADMIN_RESET_EXPIRY_MINUTES = 15;
+
+const hashResetToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
+const getAdminResetUrl = (token) => {
+  const baseUrl = (process.env.ADMIN_RESET_URL || "https://ijaht.com/admin/reset-password").replace(/[/?#]+$/, "");
+  return `${baseUrl}?token=${encodeURIComponent(token)}`;
+};
+
 exports.adminLogin = async(req,res)=>{
 
 try{
@@ -52,13 +62,14 @@ res.status(500).json({message:"Server error"});
 
 exports.forgotAdminPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
     const admin = await Admin.findOne({ email });
+    console.log("Admin forgot password: admin found", Boolean(admin));
 
     if (!admin) {
       return res.json({
@@ -67,41 +78,71 @@ exports.forgotAdminPassword = async (req, res) => {
     }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    const hashedToken = hashResetToken(resetToken);
+    console.log("Admin forgot password: token generated", Boolean(resetToken));
 
     admin.resetPasswordToken = hashedToken;
-    admin.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+    admin.resetPasswordExpire = Date.now() + ADMIN_RESET_EXPIRY_MINUTES * 60 * 1000;
     await admin.save();
 
-    const resetUrl = `${
-      process.env.ADMIN_RESET_URL || "http://localhost:5174/reset-password"
-    }/${resetToken}`;
-    await sendEmail({
+    const resetUrl = getAdminResetUrl(resetToken);
+    const emailResult = await sendEmail({
       to: admin.email,
       subject: "IJHAT Admin Password Reset",
       html: createPasswordResetEmail({
         resetUrl,
         recipientLabel: "IJHAT admin dashboard account",
-        expiry: "15 minutes",
+        expiry: `${ADMIN_RESET_EXPIRY_MINUTES} minutes`,
       }),
     });
+    console.log("Admin forgot password: email sent", Boolean(emailResult));
+    console.log("Admin forgot password: Resend response", emailResult);
 
     res.json({
       message: "If this admin email exists, a reset link has been sent.",
     });
   } catch (err) {
-    console.log(err);
+    console.error("Admin forgot password: email error", {
+      message: err.message,
+      name: err.name,
+      statusCode: err.statusCode,
+      response: err.response,
+    });
     res.status(500).json({ message: "Password reset request failed" });
+  }
+};
+
+exports.validateAdminResetToken = async (req, res) => {
+  try {
+    const token = req.body.token || req.query.token || req.params.token;
+
+    if (!token) {
+      return res.status(400).json({ message: "Reset token is required" });
+    }
+
+    const admin = await Admin.findOne({
+      resetPasswordToken: hashResetToken(token),
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    return res.json({ valid: Boolean(admin) });
+  } catch (err) {
+    console.error("Admin validate reset token failed:", {
+      message: err.message,
+      name: err.name,
+    });
+    res.status(500).json({ message: "Token validation failed" });
   }
 };
 
 exports.resetAdminPassword = async (req, res) => {
   try {
-    const { token } = req.params;
+    const token = req.params.token || req.body.token || req.query.token;
     const { password } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Reset token is required" });
+    }
 
     if (!password || password.length < 6) {
       return res.status(400).json({
@@ -109,10 +150,7 @@ exports.resetAdminPassword = async (req, res) => {
       });
     }
 
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    const hashedToken = hashResetToken(token);
 
     const admin = await Admin.findOne({
       resetPasswordToken: hashedToken,

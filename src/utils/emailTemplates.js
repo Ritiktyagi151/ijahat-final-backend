@@ -1,6 +1,3 @@
-const fs = require("fs");
-const path = require("path");
-
 const escapeHtml = (value = "") =>
   String(value)
     .replace(/&/g, "&amp;")
@@ -24,28 +21,20 @@ const journal = {
   secondary: "#0d9ecf",
 };
 
-const localLogoPath = path.resolve(__dirname, "..", "logo.png");
-let cachedLogoDataUri;
-
 const getFrontendUrl = () => (process.env.FRONTEND_URL || "https://ijaht.com/").replace(/\/?$/, "/");
-const getLocalLogoDataUri = () => {
-  if (cachedLogoDataUri) {
-    return cachedLogoDataUri;
-  }
-
-  try {
-    const logoBuffer = fs.readFileSync(localLogoPath);
-    cachedLogoDataUri = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-    return cachedLogoDataUri;
-  } catch (error) {
-    console.warn("Email logo file could not be loaded:", {
-      path: localLogoPath,
-      message: error.message,
-    });
-    return "";
-  }
+const isPublicLogoUrl = (url = "") => /^https:\/\/(?!localhost|127\.0\.0\.1)/i.test(String(url).trim());
+const getLogoUrl = () => {
+  const configuredLogoUrl = String(process.env.EMAIL_LOGO_URL || "").trim();
+  return isPublicLogoUrl(configuredLogoUrl) ? configuredLogoUrl : "https://ijaht.com/logo.png";
 };
-const getLogoUrl = () => process.env.EMAIL_LOGO_URL || getLocalLogoDataUri() || `${getFrontendUrl()}logo.png`;
+
+const renderLogoBlock = (logoUrl = getLogoUrl(), size = 64) => `
+  <div style="font-family:Arial,Helvetica,sans-serif;">
+    <img src="${escapeHtml(isPublicLogoUrl(logoUrl) ? logoUrl : getLogoUrl())}" width="${size}" alt="IJHAT - International Journal of Applied Healthcare and Technology" style="display:block;width:${size}px;max-width:${size}px;height:auto;border:0;background:#ffffff;border-radius:10px;padding:6px;margin:0 0 10px;">
+    <div style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;font-weight:800;">IJHAT</div>
+    <div style="color:#e8f7ff;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.45;">International Journal of Applied Healthcare and Technology</div>
+  </div>
+`;
 
 const humanizeLabel = (key = "") =>
   String(key)
@@ -78,6 +67,16 @@ const excludedAdminKeys = new Set([
   "date",
   "submissionDate",
   "submittedAt",
+  "submissionId",
+  "_id",
+  "id",
+  "articleTitle",
+  "manuscriptTitle",
+  "manuscriptFile",
+  "uploadedFileName",
+  "fileName",
+  "status",
+  "currentStatus",
   "ipAddress",
   "viewUrl",
 ]);
@@ -137,7 +136,25 @@ const renderAdminRows = (data = {}) => {
 
 exports.getUserThankYouTemplate = (data = {}) => {
   const details = normalizeTemplateData(data);
+  const isManuscript = Boolean(getValue(details, ["articleTitle", "manuscriptTitle", "manuscriptFile"]));
+  const submissionId = escapeHtml(getValue(details, ["submissionId", "_id", "id"], "Pending assignment"));
+  const manuscriptTitle = escapeHtml(getValue(details, ["articleTitle", "manuscriptTitle", "subject"], "Your manuscript"));
   const subject = escapeHtml(getValue(details, ["subject", "articleTitle"], "Your submission"));
+  const currentStatus = escapeHtml(getValue(details, ["currentStatus", "status"], "Received"));
+  const summaryRows = isManuscript
+    ? `
+                      <strong>Author Name:</strong> ${escapeHtml(details.fullName)}<br>
+                      <strong>Submission ID:</strong> ${submissionId}<br>
+                      <strong>Manuscript Title:</strong> ${manuscriptTitle}<br>
+                      <strong>Submission Date:</strong> ${escapeHtml(details.submissionDate)}<br>
+                      <strong>Current Status:</strong> ${currentStatus}
+                    `
+    : `
+                      <strong>Name:</strong> ${escapeHtml(details.fullName)}<br>
+                      <strong>Email:</strong> ${escapeHtml(details.email)}<br>
+                      <strong>Subject:</strong> ${subject}<br>
+                      <strong>Date:</strong> ${escapeHtml(details.submissionDate)}
+                    `;
 
   return `
 <!doctype html>
@@ -162,18 +179,24 @@ exports.getUserThankYouTemplate = (data = {}) => {
           <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" class="container" style="width:640px;max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 18px 46px rgba(18,38,63,0.14);">
             <tr>
               <td class="px" style="padding:30px 34px;background:#0b4f7a;">
-                <img src="${details.logoUrl}" width="76" alt="IJAHT Logo" style="display:block;width:76px;height:auto;margin:0 0 18px;background:#ffffff;border-radius:12px;padding:8px;">
-                <div style="color:#bde7f8;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">${journal.shortName}</div>
+                ${renderLogoBlock(details.logoUrl, 76)}
                 <h1 style="margin:7px 0 6px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:25px;line-height:1.25;">Thank You For Your Submission</h1>
-                <p style="margin:0;color:#e3f6ff;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;">${journal.name}</p>
               </td>
             </tr>
             <tr>
               <td class="px" style="padding:32px 34px 8px;">
                 <div style="background:#eaf8f0;border:1px solid #bfe8ce;border-radius:14px;padding:16px 18px;color:#13733a;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;">Submission received successfully</div>
                 <p style="margin:24px 0 14px;color:#23384d;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.75;">Dear ${escapeHtml(details.firstName)},</p>
-                <p style="margin:0 0 14px;color:#40566b;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">Thank you for submitting your information to ${journal.shortName}. This email confirms that your submission has been received successfully.</p>
-                <p style="margin:0;color:#40566b;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">Our editorial and review team will review the details and respond as appropriate. Please keep this confirmation for your records.</p>
+                <p style="margin:0 0 14px;color:#40566b;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">${
+                  isManuscript
+                    ? `Thank you for submitting your manuscript to ${journal.name}. This email confirms that your submission has been received by the editorial office.`
+                    : `Thank you for submitting your information to ${journal.shortName}. This email confirms that your submission has been received successfully.`
+                }</p>
+                <p style="margin:0;color:#40566b;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">${
+                  isManuscript
+                    ? "Our team will complete the initial checks and contact you if any additional information is required. Please keep this confirmation for your records."
+                    : "Our editorial team will review the details and respond as appropriate. Please keep this confirmation for your records."
+                }</p>
               </td>
             </tr>
             <tr>
@@ -184,10 +207,7 @@ exports.getUserThankYouTemplate = (data = {}) => {
                   </tr>
                   <tr>
                     <td style="padding:16px 18px;color:#40566b;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.75;">
-                      <strong>Name:</strong> ${escapeHtml(details.fullName)}<br>
-                      <strong>Email:</strong> ${escapeHtml(details.email)}<br>
-                      <strong>Subject:</strong> ${subject}<br>
-                      <strong>Date:</strong> ${escapeHtml(details.submissionDate)}
+                      ${summaryRows}
                     </td>
                   </tr>
                 </table>
@@ -201,7 +221,7 @@ exports.getUserThankYouTemplate = (data = {}) => {
             <tr>
               <td class="px" style="padding:24px 34px;background:#f7fbff;border-top:1px solid #e2edf5;text-align:center;">
                 <p style="margin:0 0 8px;color:#50677d;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;">Editorial Office, ${journal.name}</p>
-                <p style="margin:0;color:#7c8b99;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;">This is an automated confirmation from ${journal.shortName}.</p>
+                <p style="margin:0;color:#7c8b99;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;"><a href="https://ijaht.com" style="color:#0b75b7;text-decoration:none;font-weight:700;">Visit Website</a> &nbsp;|&nbsp; <a href="mailto:journal@ijaht.com" style="color:#0b75b7;text-decoration:none;font-weight:700;">journal@ijaht.com</a></p>
               </td>
             </tr>
           </table>
@@ -215,6 +235,21 @@ exports.getUserThankYouTemplate = (data = {}) => {
 
 exports.getAdminNotificationTemplate = (data = {}) => {
   const details = normalizeTemplateData(data);
+  const isManuscript = Boolean(getValue(details, ["articleTitle", "manuscriptTitle", "manuscriptFile"]));
+  const submissionId = escapeHtml(getValue(details, ["submissionId", "_id", "id"], "Pending assignment"));
+  const manuscriptTitle = escapeHtml(getValue(details, ["articleTitle", "manuscriptTitle", "subject"], "Not provided"));
+  const uploadedFileName = escapeHtml(getValue(details, ["manuscriptFile", "uploadedFileName", "fileName"], "Not provided"));
+  const adminRows = isManuscript
+    ? `
+                  ${detailRow("Author Name", escapeHtml(details.fullName))}
+                  ${detailRow("Author Email", `<a href="mailto:${escapeHtml(details.email)}" style="color:#0056b3;font-weight:700;text-decoration:none;">${escapeHtml(details.email)}</a>`)}
+                  ${detailRow("Submission ID", submissionId)}
+                  ${detailRow("Manuscript Title", manuscriptTitle)}
+                  ${detailRow("Submission Date", escapeHtml(details.submissionDate))}
+                  ${detailRow("Uploaded File Name", uploadedFileName)}
+                  ${renderAdminRows(data)}
+                `
+    : renderAdminRows(data);
 
   return `
 <!doctype html>
@@ -241,7 +276,7 @@ exports.getAdminNotificationTemplate = (data = {}) => {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                   <tr>
                     <td class="stack" style="vertical-align:middle;">
-                      <img src="${details.logoUrl}" width="62" alt="IJAHT Logo" style="display:block;width:62px;height:auto;background:#ffffff;border-radius:10px;padding:7px;margin-bottom:12px;">
+                      ${renderLogoBlock(details.logoUrl, 62)}
                       <div style="color:#aee0f5;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;">Admin Notification</div>
                       <h1 style="margin:6px 0 0;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.3;">New Submission Received</h1>
                     </td>
@@ -252,21 +287,25 @@ exports.getAdminNotificationTemplate = (data = {}) => {
             </tr>
             <tr>
               <td class="px" style="padding:28px 30px 14px;">
-                <div style="background:#f1f8fc;border:1px solid #cde7f4;border-radius:12px;padding:15px 17px;color:#164d6d;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;">A new form submission has arrived from the IJAHT website. Review the submitted information below.</div>
+                <div style="background:#f1f8fc;border:1px solid #cde7f4;border-radius:12px;padding:15px 17px;color:#164d6d;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;">${
+                  isManuscript
+                    ? "A new manuscript submission has arrived from the IJAHT website. Review the author and manuscript details below."
+                    : "A new form submission has arrived from the IJAHT website. Review the submitted information below."
+                }</div>
               </td>
             </tr>
             <tr>
               <td class="px" style="padding:12px 30px 32px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;border-spacing:0;border:1px solid #d8e4ee;border-radius:12px;overflow:hidden;">
                   <tr>
-                    <td colspan="2" style="padding:15px 16px;background:#0b75b7;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;">Submitted Form Data</td>
+                    <td colspan="2" style="padding:15px 16px;background:#0b75b7;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;">${isManuscript ? "Manuscript Submission Details" : "Submitted Form Data"}</td>
                   </tr>
-                  ${renderAdminRows(data)}
+                  ${adminRows}
                 </table>
               </td>
             </tr>
             <tr>
-              <td class="px" style="padding:20px 30px;background:#f8fbfd;border-top:1px solid #e2edf5;color:#738292;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;text-align:center;">Automated email from ${journal.shortName}. Do not share this message outside the editorial workflow.</td>
+              <td class="px" style="padding:20px 30px;background:#f8fbfd;border-top:1px solid #e2edf5;color:#738292;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;text-align:center;"><a href="https://ijaht.com" style="color:#0b75b7;text-decoration:none;font-weight:700;">Visit Website</a> &nbsp;|&nbsp; <a href="mailto:journal@ijaht.com" style="color:#0b75b7;text-decoration:none;font-weight:700;">journal@ijaht.com</a><br>Automated email from ${journal.shortName}. Do not share this message outside the editorial workflow.</td>
             </tr>
           </table>
         </td>
@@ -288,8 +327,8 @@ const detailRow = (label, value) => `
   </tr>
 `;
 
-const emailShell = ({ preheader, headerTitle, children, logoCid, logoUrl, websiteUrl = journal.websiteUrl }) => {
-  const logoSrc = logoCid ? `cid:${logoCid}` : logoUrl || getLogoUrl();
+const emailShell = ({ preheader, headerTitle, children, logoUrl, websiteUrl = journal.websiteUrl }) => {
+  const logoSrc = isPublicLogoUrl(logoUrl) ? logoUrl : getLogoUrl();
 
   return `
 <!doctype html>
@@ -320,7 +359,7 @@ const emailShell = ({ preheader, headerTitle, children, logoCid, logoUrl, websit
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
                   <tr>
                     <td width="82" style="width:82px;vertical-align:middle;">
-                      <img src="${logoSrc}" width="62" alt="IJHAT Logo" style="display:block;width:62px;height:auto;border:0;background:#ffffff;border-radius:12px;padding:7px;">
+                      ${renderLogoBlock(logoSrc, 62)}
                     </td>
                     <td style="vertical-align:middle;">
                       <div style="font-family:Arial,Helvetica,sans-serif;color:#dff4ff;font-size:12px;line-height:1.35;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">${journal.shortName}</div>
