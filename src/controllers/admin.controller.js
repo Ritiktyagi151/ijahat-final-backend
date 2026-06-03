@@ -88,10 +88,10 @@ exports.forgotAdminPassword = async (req, res) => {
     const resetUrl = getAdminResetUrl(resetToken);
     const emailResult = await sendEmail({
       to: admin.email,
-      subject: "IJHAT Admin Password Reset",
+      subject: "IJAHT Admin Password Reset",
       html: createPasswordResetEmail({
         resetUrl,
-        recipientLabel: "IJHAT admin dashboard account",
+        recipientLabel: "IJAHT admin dashboard account",
         expiry: `${ADMIN_RESET_EXPIRY_MINUTES} minutes`,
       }),
     });

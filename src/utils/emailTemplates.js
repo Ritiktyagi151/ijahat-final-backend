@@ -13,7 +13,7 @@ const fallback = (value, defaultValue = "Not provided") =>
 
 const journal = {
   name: "International Journal of Applied Healthcare and Technology",
-  shortName: "IJHAT",
+  shortName: "IJAHT",
   tagline: "Peer-reviewed open access journal for healthcare and technology research",
   websiteUrl: "https://ijaht.com/",
   email: "journal@ijaht.com",
@@ -22,17 +22,10 @@ const journal = {
 };
 
 const getFrontendUrl = () => (process.env.FRONTEND_URL || "https://ijaht.com/").replace(/\/?$/, "/");
-const isPublicLogoUrl = (url = "") => /^https:\/\/(?!localhost|127\.0\.0\.1)/i.test(String(url).trim());
-const getLogoUrl = () => {
-  const configuredLogoUrl = String(process.env.EMAIL_LOGO_URL || "").trim();
-  return isPublicLogoUrl(configuredLogoUrl) ? configuredLogoUrl : "https://ijaht.com/logo.png";
-};
-
-const renderLogoBlock = (logoUrl = getLogoUrl(), size = 64) => `
-  <div style="font-family:Arial,Helvetica,sans-serif;">
-    <img src="${escapeHtml(isPublicLogoUrl(logoUrl) ? logoUrl : getLogoUrl())}" width="${size}" alt="IJHAT - International Journal of Applied Healthcare and Technology" style="display:block;width:${size}px;max-width:${size}px;height:auto;border:0;background:#ffffff;border-radius:10px;padding:6px;margin:0 0 10px;">
-    <div style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;font-weight:800;">IJHAT</div>
-    <div style="color:#e8f7ff;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.45;">International Journal of Applied Healthcare and Technology</div>
+const renderBrandBlock = (align = "left") => `
+  <div style="font-family:Arial,Helvetica,sans-serif;text-align:${align};">
+    <div style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:23px;line-height:1.15;font-weight:800;letter-spacing:.8px;">IJAHT</div>
+    <div style="margin-top:6px;color:#e8f7ff;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;font-weight:600;">International Journal of Applied Healthcare and Technology</div>
   </div>
 `;
 
@@ -103,7 +96,6 @@ const normalizeTemplateData = (data = {}) => {
     institution: getValue(data, ["institution", "organization", "affiliation"]),
     submissionDate,
     frontendUrl: getFrontendUrl(),
-    logoUrl: getLogoUrl(),
   };
 };
 
@@ -179,8 +171,8 @@ exports.getUserThankYouTemplate = (data = {}) => {
           <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" class="container" style="width:640px;max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 18px 46px rgba(18,38,63,0.14);">
             <tr>
               <td class="px" style="padding:30px 34px;background:#0b4f7a;">
-                ${renderLogoBlock(details.logoUrl, 76)}
-                <h1 style="margin:7px 0 6px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:25px;line-height:1.25;">Thank You For Your Submission</h1>
+                ${renderBrandBlock()}
+                <h1 style="margin:18px 0 6px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:25px;line-height:1.25;">Thank You For Your Submission</h1>
               </td>
             </tr>
             <tr>
@@ -276,7 +268,7 @@ exports.getAdminNotificationTemplate = (data = {}) => {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                   <tr>
                     <td class="stack" style="vertical-align:middle;">
-                      ${renderLogoBlock(details.logoUrl, 62)}
+                      ${renderBrandBlock()}
                       <div style="color:#aee0f5;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;">Admin Notification</div>
                       <h1 style="margin:6px 0 0;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.3;">New Submission Received</h1>
                     </td>
@@ -327,10 +319,7 @@ const detailRow = (label, value) => `
   </tr>
 `;
 
-const emailShell = ({ preheader, headerTitle, children, logoUrl, websiteUrl = journal.websiteUrl }) => {
-  const logoSrc = isPublicLogoUrl(logoUrl) ? logoUrl : getLogoUrl();
-
-  return `
+const emailShell = ({ preheader, headerTitle, children, websiteUrl = journal.websiteUrl }) => `
 <!doctype html>
 <html lang="en">
   <head>
@@ -358,12 +347,9 @@ const emailShell = ({ preheader, headerTitle, children, logoUrl, websiteUrl = jo
               <td style="background:${journal.primary};background-image:linear-gradient(135deg,${journal.primary},${journal.secondary});padding:26px 30px;" class="email-padding">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
                   <tr>
-                    <td width="82" style="width:82px;vertical-align:middle;">
-                      ${renderLogoBlock(logoSrc, 62)}
-                    </td>
                     <td style="vertical-align:middle;">
-                      <div style="font-family:Arial,Helvetica,sans-serif;color:#dff4ff;font-size:12px;line-height:1.35;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">${journal.shortName}</div>
-                      <h1 style="margin:5px 0 4px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:1.28;font-weight:700;">${journal.name}</h1>
+                      ${renderBrandBlock()}
+                      <h1 style="margin:18px 0 4px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:1.28;font-weight:700;">${escapeHtml(headerTitle)}</h1>
                       <p style="margin:0;color:#e8f7ff;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;">${journal.tagline}</p>
                     </td>
                   </tr>
@@ -395,14 +381,12 @@ const emailShell = ({ preheader, headerTitle, children, logoUrl, websiteUrl = jo
   </body>
 </html>
 `;
-};
 
 exports.createUserThankYouEmail = ({
   firstName = "{{firstName}}",
   fullName = "{{fullName}}",
   email = "{{email}}",
   subject = "{{subject}}",
-  logoCid,
   websiteUrl = journal.websiteUrl,
 } = {}) => {
   const safeFirstName = escapeHtml(fallback(firstName, "{{firstName}}"));
@@ -411,9 +395,8 @@ exports.createUserThankYouEmail = ({
   const safeSubject = escapeHtml(fallback(subject, "{{subject}}"));
 
   return emailShell({
-    logoCid,
     websiteUrl,
-    headerTitle: "Thank You for Contacting IJHAT",
+    headerTitle: "Thank You for Contacting IJAHT",
     preheader: "We have received your message and our editorial team will review it shortly.",
     children: `
       <tr>
@@ -434,7 +417,7 @@ exports.createUserThankYouEmail = ({
       </tr>
       <tr>
         <td style="padding:20px 34px 6px;" class="email-padding">
-          <h2 style="margin:0 0 14px;color:#0f2f55;font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:1.35;font-weight:700;">Thank You for Contacting IJHAT</h2>
+          <h2 style="margin:0 0 14px;color:#0f2f55;font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:1.35;font-weight:700;">Thank You for Contacting IJAHT</h2>
           <p style="margin:0 0 14px;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">Dear ${safeFirstName},</p>
           <p style="margin:0 0 14px;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">Thank you for contacting the ${journal.name} (${journal.shortName}).</p>
           <p style="margin:0 0 14px;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">We have successfully received your message and our editorial team will review your inquiry shortly.</p>
@@ -464,7 +447,7 @@ exports.createUserThankYouEmail = ({
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 22px;">
             <tr>
               <td style="border-radius:8px;background:${journal.primary};">
-                <a href="${websiteUrl}" class="mobile-button" style="display:inline-block;padding:13px 22px;color:#ffffff;background:${journal.primary};border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;">Visit IJHAT Website</a>
+                <a href="${websiteUrl}" class="mobile-button" style="display:inline-block;padding:13px 22px;color:#ffffff;background:${journal.primary};border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;">Visit IJAHT Website</a>
               </td>
             </tr>
           </table>
@@ -485,7 +468,6 @@ exports.createAdminNotificationEmail = ({
   date = "{{date}}",
   ipAddress = "",
   viewUrl = journal.websiteUrl,
-  logoCid,
   websiteUrl = journal.websiteUrl,
 } = {}) => {
   const safeFullName = escapeHtml(fallback(fullName, "{{fullName}}"));
@@ -497,10 +479,9 @@ exports.createAdminNotificationEmail = ({
   const safeIpAddress = escapeHtml(fallback(ipAddress));
 
   return emailShell({
-    logoCid,
     websiteUrl,
     headerTitle: "New Form Submission Received",
-    preheader: "A new IJHAT form submission is waiting for review.",
+    preheader: "A new IJAHT form submission is waiting for review.",
     children: `
       <tr>
         <td style="padding:30px 34px 12px;" class="email-padding">
@@ -509,7 +490,7 @@ exports.createAdminNotificationEmail = ({
               <td class="stack-column" style="vertical-align:middle;">
                 <div style="display:inline-block;background:#e9f7fc;color:${journal.secondary};border:1px solid #ccecf6;border-radius:999px;padding:7px 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;">New Inquiry</div>
                 <h2 style="margin:14px 0 5px;color:#0f2f55;font-family:Arial,Helvetica,sans-serif;font-size:23px;line-height:1.32;font-weight:700;">New Submission Notification</h2>
-                <p style="margin:0;color:#637487;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;">A new form submission has arrived from the IJHAT website.</p>
+                <p style="margin:0;color:#637487;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;">A new form submission has arrived from the IJAHT website.</p>
               </td>
               <td align="right" class="stack-column mobile-center" style="vertical-align:middle;padding-top:8px;">
                 <a href="${viewUrl}" class="mobile-button" style="display:inline-block;background:${journal.primary};border-radius:8px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:12px 18px;text-decoration:none;">View Submission</a>
@@ -538,26 +519,25 @@ exports.createAdminNotificationEmail = ({
               </td>
             </tr>
           </table>
-          <p style="margin:18px 0 0;color:#68798b;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.65;">This is an automated admin notification from the IJHAT website forms system.</p>
+          <p style="margin:18px 0 0;color:#68798b;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.65;">This is an automated admin notification from the IJAHT website forms system.</p>
         </td>
       </tr>
     `,
   });
 };
 
-exports.createNewsletterSubscriberEmail = ({ email = "{{email}}", logoCid } = {}) =>
+exports.createNewsletterSubscriberEmail = ({ email = "{{email}}" } = {}) =>
   emailShell({
-    logoCid,
     headerTitle: "Newsletter Subscription Successful",
-    preheader: "Your IJHAT newsletter subscription is active.",
+    preheader: "Your IJAHT newsletter subscription is active.",
     children: `
       <tr>
         <td style="padding:32px 34px;" class="email-padding">
           <div style="background:#eef8ff;border:1px solid #cfeeff;border-radius:12px;padding:16px 18px;margin-bottom:22px;color:${journal.primary};font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;">
             Subscription successful
           </div>
-          <h2 style="margin:0 0 14px;color:#0f2f55;font-family:Arial,Helvetica,sans-serif;font-size:23px;line-height:1.35;">Thank you for subscribing to IJHAT</h2>
-          <p style="margin:0 0 14px;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">Your email address <strong>${escapeHtml(email)}</strong> has been successfully added to the IJHAT newsletter.</p>
+          <h2 style="margin:0 0 14px;color:#0f2f55;font-family:Arial,Helvetica,sans-serif;font-size:23px;line-height:1.35;">Thank you for subscribing to IJAHT</h2>
+          <p style="margin:0 0 14px;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">Your email address <strong>${escapeHtml(email)}</strong> has been successfully added to the IJAHT newsletter.</p>
           <p style="margin:0;color:#34495e;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.75;">You will receive journal updates, new issue alerts, announcements, publication news, and important author resources from the editorial office.</p>
         </td>
       </tr>
@@ -567,13 +547,11 @@ exports.createNewsletterSubscriberEmail = ({ email = "{{email}}", logoCid } = {}
 exports.createNewsletterAdminEmail = ({
   email = "{{email}}",
   date = "{{date}}",
-  source = "IJHAT Website",
-  logoCid,
+  source = "IJAHT Website",
 } = {}) =>
   emailShell({
-    logoCid,
     headerTitle: "New Newsletter Subscriber",
-    preheader: "A new visitor subscribed to the IJHAT newsletter.",
+    preheader: "A new visitor subscribed to the IJAHT newsletter.",
     children: `
       <tr>
         <td style="padding:32px 34px;" class="email-padding">
@@ -605,12 +583,10 @@ exports.createManuscriptAcceptedEmail = ({
   volume = "",
   issueNumber = "",
   archiveUrl = journal.websiteUrl,
-  logoCid,
 } = {}) =>
   emailShell({
-    logoCid,
     headerTitle: "Manuscript Accepted",
-    preheader: "Your IJHAT manuscript has been accepted for publication.",
+    preheader: "Your IJAHT manuscript has been accepted for publication.",
     children: `
       <tr>
         <td style="padding:32px 34px 8px;" class="email-padding">
@@ -654,13 +630,11 @@ exports.createManuscriptRejectedEmail = ({
   articleTitle = "{{articleTitle}}",
   reason = "",
   websiteUrl = journal.websiteUrl,
-  logoCid,
 } = {}) =>
   emailShell({
-    logoCid,
     websiteUrl,
     headerTitle: "Manuscript Decision",
-    preheader: "A decision has been made on your IJHAT manuscript submission.",
+    preheader: "A decision has been made on your IJAHT manuscript submission.",
     children: `
       <tr>
         <td style="padding:32px 34px 8px;" class="email-padding">
@@ -695,14 +669,10 @@ exports.createManuscriptRejectedEmail = ({
 exports.createPasswordResetEmail = ({
   resetUrl = "",
   otp = "",
-  recipientLabel = "IJHAT account",
+  recipientLabel = "IJAHT account",
   expiry = "10 minutes",
-  logoCid,
-  logoUrl,
 } = {}) =>
   emailShell({
-    logoCid,
-    logoUrl,
     headerTitle: "Password Reset",
     preheader: `Password reset instructions for your ${recipientLabel}.`,
     children: `

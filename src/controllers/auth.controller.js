@@ -109,12 +109,11 @@ exports.forgotPassword = async (req, res) => {
     const resetUrl = getFrontendResetUrl(resetToken);
     await sendEmail({
       to: email,
-      subject: "Reset Your IJHAT Password",
+      subject: "Reset Your IJAHT Password",
       html: createPasswordResetEmail({
         resetUrl,
-        recipientLabel: "IJHAT user account",
+        recipientLabel: "IJAHT user account",
         expiry: `${PASSWORD_RESET_EXPIRY_MINUTES} minutes`,
-        logoUrl: "https://ijaht.com/logo.png",
       }),
     });
 
